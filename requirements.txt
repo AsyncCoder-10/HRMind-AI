@@ -13,3 +13,6 @@ docx2txt
 
 litellm
 google-cloud-modelarmor
+
+langchain-huggingface
+sentence-transformers

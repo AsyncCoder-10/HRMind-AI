@@ -1,11 +1,11 @@
 from typing import Annotated, TypedDict
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_qdrant import QdrantVectorStore
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 
-from src.config import GEMINI_API_KEY, QDRANT_URL, QDRANT_API_KEY, COLLECTION_NAME
+from src.config import QDRANT_URL, QDRANT_API_KEY, COLLECTION_NAME
 from src.router import get_llm_response
 from src.guardrails import check_input_security, check_output_security, is_hr_scope
 from src.cache import check_cache, update_cache
@@ -18,9 +18,11 @@ class AgentState(TypedDict):
     is_safe: bool
 
 
-embeddings = GoogleGenerativeAIEmbeddings(
-    model="models/gemini-embedding-001", google_api_key=GEMINI_API_KEY
+# 1. Initialize Local Embeddings & Vector Store
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={"device": "cpu"}
 )
+
 vectorstore = QdrantVectorStore.from_existing_collection(
     embedding=embeddings,
     collection_name=COLLECTION_NAME,
@@ -28,7 +30,7 @@ vectorstore = QdrantVectorStore.from_existing_collection(
     api_key=QDRANT_API_KEY,
 )
 
-# --- NODES ---
+# --- GRAPH NODES ---
 
 
 def input_guard_node(state: AgentState):
@@ -41,6 +43,7 @@ def input_guard_node(state: AgentState):
             ],
             "is_safe": False,
         }
+    # Replace the message with the sanitized version
     return {"messages": [HumanMessage(content=sanitized)], "is_safe": True}
 
 
@@ -68,7 +71,10 @@ def cache_node(state: AgentState):
 
 def retrieve_node(state: AgentState):
     query = state["messages"][-1].content
+    # Retrieve top 4 most similar chunks from Qdrant
     docs = vectorstore.similarity_search(query, k=4)
+
+    # Format the context with source citations
     context = "\n\n".join(
         [
             f"Source: {doc.metadata.get('source', 'Unknown')}\n{doc.page_content}"
@@ -83,25 +89,29 @@ def generate_node(state: AgentState):
     context = state.get("context", "")
 
     prompt = f"""You are an expert HR Assistant. Answer the question using ONLY the context below. 
-    If you don't know, say you don't know. Cite the source document.
+    If you don't know the answer based on the context, say "I cannot find this information in the HR policies."
+    Always cite the exact source document for your answer.
     
     CONTEXT:
     {context}
     """
 
-    # LiteLLM routes to Gemini or Groq
+    # LiteLLM routes to Gemini or Groq fallback
     response_text = get_llm_response(
         [{"role": "system", "content": prompt}, {"role": "user", "content": query}]
     )
 
-    # Save to cache for future identical queries
+    # Save the new answer to the semantic cache
     update_cache(query, response_text)
+
     return {"messages": [AIMessage(content=response_text)]}
 
 
 def output_guard_node(state: AgentState):
+    # Get the original query (second to last message) and the generated output (last message)
     query = state["messages"][-2].content if len(state["messages"]) > 1 else ""
     output = state["messages"][-1].content
+
     is_safe, sanitized = check_output_security(query, output)
     if not is_safe:
         return {
@@ -132,6 +142,7 @@ def route_after_cache(state: AgentState):
 # --- BUILD GRAPH ---
 
 workflow = StateGraph(AgentState)
+
 workflow.add_node("input_guard", input_guard_node)
 workflow.add_node("scope", scope_guard_node)
 workflow.add_node("cache", cache_node)
@@ -140,9 +151,13 @@ workflow.add_node("generate", generate_node)
 workflow.add_node("output_guard", output_guard_node)
 
 workflow.add_edge(START, "input_guard")
+
+# Conditional routing based on node results
 workflow.add_conditional_edges("input_guard", route_after_input)
 workflow.add_conditional_edges("scope", route_after_scope)
 workflow.add_conditional_edges("cache", route_after_cache)
+
+# Standard edges
 workflow.add_edge("retrieve", "generate")
 workflow.add_edge("generate", "output_guard")
 workflow.add_edge("output_guard", END)
