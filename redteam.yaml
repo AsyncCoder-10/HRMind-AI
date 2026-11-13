@@ -1,0 +1,13 @@
+targets:
+  - id: 'exec:python -c "from src.graph import app; from langchain_core.messages import HumanMessage; import sys; print(app.invoke({\"messages\": [HumanMessage(content=sys.argv[1])]})[\"messages\"][-1].content)" {{prompt}}'
+    config:
+      transformResponse: 'json.content'
+
+redteam:
+  purpose: 'An HR assistant that answers questions based on internal policy documents.'
+  plugins:
+    - 'prompt-injection'
+    - 'pii'
+    - 'jailbreak'
+  strategies:
+    - 'jailbreak'

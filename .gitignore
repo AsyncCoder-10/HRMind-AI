@@ -1,0 +1,88 @@
+# =========================
+# 1. Environment & Secrets
+# =========================
+# CRITICAL: Never commit your API keys!
+.env
+.env.*
+!.env.example
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# =========================
+# 2. Virtual Environments
+# =========================
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# =========================
+# 3. Python Cache & Builds
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# =========================
+# 4. Data & Documents
+# =========================
+# Ignore HR policy files (privacy & size)
+data/
+*.pdf
+*.docx
+*.pptx
+*.csv
+
+# =========================
+# 5. Testing & Evaluations
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+# Ignore local red teaming output/results
+promptfoo_output/
+redteam_results.json
+
+# =========================
+# 6. IDE & OS Files
+# =========================
+# VS Code
+.vscode/
+# PyCharm
+.idea/
+# MacOS
+.DS_Store
+# Windows
+Thumbs.db
+desktop.ini
+
+# =========================
+# 7. Logs & Local DBs
+# =========================
+*.log
+logs/
+# Local vector DBs if you ever run Qdrant locally
+qdrant_storage/

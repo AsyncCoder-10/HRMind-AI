@@ -1,0 +1,15 @@
+model_list:
+  - model_name: "free-tier-model"
+    litellm_params:
+      model: "gemini/gemini-2.0-flash" # Primary
+      api_key: os.environ/GEMINI_API_KEY
+  - model_name: "free-tier-model"
+    litellm_params:
+      model: "groq/llama-3.3-70b-versatile" # Fallback
+      api_key: os.environ/GROQ_API_KEY
+
+router_settings:
+  routing_strategy: "simple-shuffle"
+  num_retries: 3
+  allowed_fails: 1
+  cooldown_time: 60

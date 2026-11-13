@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.env
+data/
+.git/
+.gitignore
+*.pdf
+*.docx
+tests/
+test_eval.py
