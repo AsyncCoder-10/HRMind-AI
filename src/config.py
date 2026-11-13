@@ -19,5 +19,8 @@ except Exception:
     QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
     COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", "hr_policy")
 
+# Define the cache collection name
+CACHE_COLLECTION_NAME = "semantic_cache"
+
 # Ensure the key is available for LangChain's default lookups
 os.environ["GOOGLE_API_KEY"] = GEMINI_API_KEY
